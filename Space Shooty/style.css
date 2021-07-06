@@ -1,0 +1,35 @@
+body{
+    font-family: 'Space Mono', monospace;
+}
+
+.splashScreen{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 800px;
+    height: 600px;
+    background-color: #000000;
+    z-index: 100;
+    margin: 8px;
+    color: #ffffff;
+    text-align: center;
+}
+
+.splashScreen.display-none{
+    position: fixed;
+    opacity: 0;
+    z-index: -10;
+    transition: all 0.5s;
+}
+
+@keyframes fadeIn{
+    to {
+        opacity: 1;
+    }
+}
+
+.fade-in {
+    opacity: 0;
+    animation: fadeIn 1s ease-in forwards;
+    padding: 200px 0;
+}

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Space Shooty</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@1,600&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <script src="pixi.min.js"></script>
+</head>
+<body>
+<div class="splashScreen">
+    <h1 class="fade-in">WELCOME TO THE GAME!<br><br>powered by PIXIjs</h1>
+</div>
+
+<div id="gameDiv">
+<div id="keys"></div>
+<script type="text/javascript">
+    // Aliases
+    let Application = PIXI.Application;
+    let Sprite = PIXI.Sprite;
+    let bgBack;
+    let bgMiddle;
+    let bgFront;
+    let bgX = 0;
+    let bgSpeed = 1;
+    let rockets = [];
+    let rocketSpeed = 10;
+    let enemies = [];
+    let enemySpeed = 4;
+
+    // Creating the Game screen
+    let app = new Application({antialias: true, backgroundColor: 0xc2c2c2});
+    // Creating the Menu screen
+    let menu = new Application({antialias: true, backgroundColor: 0x000000});
+
+    // Starting up on Menu scene
+    document.querySelector("#gameDiv").appendChild(menu.view);
+
+    // -------------------------Resources for Menu scene-------------------------
+    // Creating the Menu buttons
+    logo =  new Sprite.from("images/logo.png");
+    button1 = new Sprite.from("images/button1.png");
+    button2 = new Sprite.from("images/button2.png");
+    button3 = new Sprite.from("images/button3.png");
+    buttonExit = new Sprite.from("images/buttonExit.png");
+    // Anchoring all the buttons
+    logo.anchor.set(0.5);
+    button1.anchor.set(0.5);
+    button2.anchor.set(0.5);
+    button3.anchor.set(0.5);
+    buttonExit.anchor.set(0.5);
+    // Sizing all the buttons
+    logo.width = 300;
+    logo.height = 100;
+    button1.width = 100;
+    button1.height = 50;
+    button2.width = 100;
+    button2.height = 50;
+    button3.width = 100;
+    button3.height = 50;
+    buttonExit.width = 100;
+    buttonExit.height = 50;
+    // Aligning the buttons horizontally
+    logo.x = app.view.width / 2;
+    button1.x = app.view.width / 2;
+    button2.x = app.view.width / 2;
+    button3.x = app.view.width / 2;
+    buttonExit.x = app.view.width / 2;
+    // Placing buttons in a row, one under the other vertically
+    logo.y = 150;
+    button1.y = 250;
+    button2.y = 320;
+    button3.y = 390;
+    buttonExit.y = 460;
+    // Adding all the buttons to the stage
+    menu.stage.addChild(logo);
+    menu.stage.addChild(button1);
+    menu.stage.addChild(button2);
+    menu.stage.addChild(button3);
+    menu.stage.addChild(buttonExit);
+    // Mouse interactivity for buttons
+    button1
+        .on('pointerdown', buttonClick)
+        .on('pointerover', buttonOver);
+
+    button2
+        .on('pointerdown', buttonClick)
+        .on('pointerover', buttonOver);
+
+    button3
+        .on('pointerdown', buttonClick)
+        .on('pointerover', buttonOver);
+
+    button1.interactive = true;
+    button2.interactive = true;
+    button3.interactive = true;
+
+    // ----------------FUNCTIONS----------------
+    function buttonClick() {
+        // Change to Game screen when pressed
+        document.querySelector("#gameDiv").removeChild(menu.view);
+        document.querySelector("#gameDiv").appendChild(app.view);
+    }
+
+    function buttonOver() {
+        // To add later...
+    }
+
+    // -------------------------Resources for Game scene-------------------------
+    // ----------------PARALLAX BACKGROUND----------------
+    app.loader.baseUrl = "images";
+    app.loader
+        .add("bgBack", "space-back.png")
+        .add("bgMiddle", "space-middle.png")
+        .add("bgFront", "space-front.png");
+    app.loader.onComplete.add(initBackground);
+    app.loader.load();
+
+    function initBackground(){
+        bgBack = createBg(app.loader.resources["bgBack"].texture);
+        bgMiddle = createBg(app.loader.resources["bgMiddle"].texture);
+        bgFront = createBg(app.loader.resources["bgFront"].texture);
+        app.ticker.add(gameLoop);
+    }
+
+    function createBg(texture){
+        let tiling = new PIXI.TilingSprite(texture, 800, 600);
+        tiling.position.set(0,0);
+        // Adding parallax background to stage
+        app.stage.addChild(tiling);
+        // Adding player sprite to stage
+        app.stage.addChild(spaceship);
+
+        return tiling;
+    }
+    // ----------------CHARACTERS----------------
+    // Player sprite
+    spaceship = new Sprite.from("images/spaceship.png");
+    spaceship.anchor.set(0.5);
+    spaceship.x = app.view.width / 2;
+    spaceship.y = app.view.height / 2;
+
+    // Mouse interaction
+    app.stage.interactive = true;
+    // Interaction on movement
+    app.stage.on("pointermove", moveShip);
+    // Interaction if you click anywhere on the stage
+    document.querySelector("#gameDiv").addEventListener("pointerdown", fire);
+    // every two seconds spawn an enemy
+    setInterval(function(){spawnEnemy();}, 2000);
+
+
+
+    // ----------------FUNCTIONS----------------
+    // Move Spaceship based on mouse position
+    function moveShip(e){
+        let pos = e.data.global;
+        spaceship.x = pos.x;
+        spaceship.y = pos.y;
+    }
+
+    function updateRockets(){
+        for(let i = 0; i < rockets.length; i++){
+            // Move rocket to the right of the screen
+            rockets[i].position.x += rockets[i].speed;
+            if (rockets[i].position.x > 800){
+                // If the rocket goes out of the screen, remove it
+                rockets[i].dead = true;
+            }
+        }
+        for(let i = 0; i < rockets.length; i++){
+            if (rockets[i].dead){
+                // Remove rocket from the stage
+                app.stage.removeChild(rockets[i]);
+                // Remove rocket from array
+                rockets.splice(i,1);
+            }
+        }
+    }
+
+    function updateEnemies(){
+        for(let i = 0; i < enemies.length; i++){
+            // Move rocket to the right of the screen
+            enemies[i].position.x -= enemies[i].speed;
+            if (enemies[i].position.x < 0){
+                // If the rocket goes out of the screen, remove it
+                enemies[i].dead = true;
+            }
+        }
+        for(let i = 0; i < enemies.length; i++){
+            if (enemies[i].dead){
+                // Remove rocket from the stage
+                app.stage.removeChild(enemies[i]);
+                // Remove rocket from array
+                enemies.splice(i,1);
+            }
+        }
+    }
+
+    function fire(){
+        let rocket = createRocket();
+        // Create a rocket and add it to the rockets array
+        rockets.push(rocket);
+    }
+
+    function spawnEnemy(){
+        let enemy = createEnemy();
+        // Create a new enemy and add it to the enemies array
+        enemies.push(enemy);
+    }
+
+    function createRocket(){
+        // Create the rocket sprite with it's anchor on the spaceship
+        let rocket = new Sprite.from("images/rocket.png");
+        rocket.anchor.set(0.5);
+        rocket.x = spaceship.x;
+        rocket.y = spaceship.y;
+        rocket.speed = rocketSpeed;
+        app.stage.addChild(rocket);
+        // Assign to array of rockets
+        return rocket;
+    }
+
+    function createEnemy(){
+        // Create the enemy sprite with it's anchor randomly in the stage
+        let enemy = new Sprite.from("images/enemy.png");
+        enemy.anchor.set(0.5);
+        enemy.x = 800;
+        enemy.y = Math.floor(Math.random() * 600) + 1;
+        enemy.speed = enemySpeed;
+        app.stage.addChild(enemy);
+        // Assign to array of enemies
+        return enemy;
+    }
+
+    function collision(a, b){
+        // Get Bounds of the objects
+        let aBox = a.getBounds();
+        let bBox = b.getBounds();
+        // See if they hit each other in any position
+        return aBox.x + aBox.width > bBox.x &&
+               aBox.x < bBox.x + bBox.width &&
+               aBox.y + aBox.height > bBox.y &&
+               aBox.y < bBox.y + bBox.height;
+    }
+
+    function updateBg(){
+        bgX = (bgX - bgSpeed);
+        bgFront.tilePosition.x = bgX;
+        bgMiddle.tilePosition.x = bgX / 2;
+        bgBack.tilePosition.x = bgX / 4;
+    }
+
+    function gameLoop(){
+        updateBg();
+        updateRockets();
+        updateEnemies();
+        // If spaceship hits an enemy, remove enemy
+        for(let i = 0; i < enemies.length; i++){
+            if (collision(spaceship, enemies[i])){
+                app.stage.removeChild(enemies[i]);
+                // Lose condition, change to Menu screen
+                document.querySelector("#gameDiv").removeChild(app.view);
+                document.querySelector("#gameDiv").appendChild(menu.view);
+            }
+        }
+        // If a rocket hits an enemy, remove enemy and rocket that hit
+        for(let i = 0; i < enemies.length; i++){
+            for(let j = 0; j < rockets.length; j++){
+                if (collision(rockets[j], enemies[i])){
+                    // Move it out of the stage, let updateEnemies() remove it
+                    enemies[i].x = -10;
+                    enemies[i].y = -10;
+                    // Removes texture but invisible enemy object could still collide with spaceship
+                    app.stage.removeChild(enemies[i]);
+                }
+            }}
+    }
+
+</script>
+</div>
+<h3>Use Mouse to move the spaceship, click to shoot rockets.</h3>
+</body>
+<script type="text/javascript">
+    // Short script to remove splashscreen after 2 seconds
+    const splash = document.querySelector(".splashScreen");
+    document.addEventListener('DOMContentLoaded', (e) => {
+        setTimeout(() => {
+            splash.classList.add('display-none');
+        }, 2000);
+    });
+</script>
+</html>
